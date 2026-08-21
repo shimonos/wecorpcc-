@@ -67,6 +67,8 @@ public class WeCorpPlugin extends Plugin {
 	private String lastDropMessage = "";
 
 	private boolean corpAlive;
+	// Locks one KC to one real Corp spawn/death cycle.
+	private boolean corpKillProcessed;
 	private boolean atCorp;
 
 	private int totalKills;
@@ -1134,7 +1136,7 @@ public class WeCorpPlugin extends Plugin {
 						name + " (You)",
 						new MassPanel.PlayerMassData(
 								name + " (You)",
-								killCount.getOrDefault(name, 0),
+								getKillCountForName(name),
 								massFangCount.getOrDefault(name, 0),
 								massVoidwakerCount.getOrDefault(name, 0),
 								massDwhCount.getOrDefault(name, 0)
@@ -1180,7 +1182,7 @@ public class WeCorpPlugin extends Plugin {
 						name,
 						new MassPanel.PlayerMassData(
 								name,
-								killCount.getOrDefault(name, 0),
+								getKillCountForName(name),
 								massFangCount.getOrDefault(name, 0),
 								massVoidwakerCount.getOrDefault(name, 0),
 								massDwhCount.getOrDefault(name, 0)
@@ -1215,6 +1217,21 @@ public class WeCorpPlugin extends Plugin {
 					massPlayerInfo
 			);
 		}
+	}
+
+	private int getKillCountForName(String name)
+	{
+		String normalizedName = normalizeName(name);
+
+		for (Map.Entry<String, Integer> entry : killCount.entrySet())
+		{
+			if (normalizeName(entry.getKey()).equals(normalizedName))
+			{
+				return entry.getValue();
+			}
+		}
+
+		return 0;
 	}
 
 	private String getSpecText(String name)

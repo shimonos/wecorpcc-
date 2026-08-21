@@ -1040,14 +1040,17 @@ public class MassPanel extends PluginPanel
                 )
         );
 
+        /*
+         * Keep Fang/Voidwaker on the left.
+         * KC is moved to its own fixed right-side column below,
+         * so it cannot be clipped by long player/stat text.
+         */
         JLabel stats =
                 new JLabel(
                         "F:" +
                                 player.tripFangSpecs +
                                 "  VW:" +
-                                player.tripVoidwakerSpecs +
-                                "  KC:" +
-                                player.kills
+                                player.tripVoidwakerSpecs
                 );
 
         stats.setForeground(
@@ -1089,8 +1092,46 @@ public class MassPanel extends PluginPanel
         c1.weightx = 1.0;
         c1.fill = GridBagConstraints.HORIZONTAL;
         c1.anchor = GridBagConstraints.WEST;
+        c1.insets = new Insets(0, 0, 0, 4);
 
         row.add(infoPanel, c1);
+
+        /*
+         * Dedicated KC column on the far right.
+         */
+        JLabel kc =
+                new JLabel(
+                        "KC " + player.kills,
+                        SwingConstants.RIGHT
+                );
+
+        kc.setForeground(Color.WHITE);
+
+        kc.setFont(
+                kc.getFont().deriveFont(
+                        Font.BOLD,
+                        11f
+                )
+        );
+
+        kc.setPreferredSize(
+                new Dimension(42, 38)
+        );
+
+        kc.setMinimumSize(
+                new Dimension(42, 38)
+        );
+
+        GridBagConstraints c2 =
+                new GridBagConstraints();
+
+        c2.gridx = 2;
+        c2.gridy = 0;
+        c2.gridheight = 3;
+        c2.anchor = GridBagConstraints.EAST;
+        c2.insets = new Insets(0, 2, 0, 0);
+
+        row.add(kc, c2);
 
         installRemoveMenu(row, player);
         installRemoveMenu(circle, player);
@@ -1098,6 +1139,7 @@ public class MassPanel extends PluginPanel
         installRemoveMenu(name, player);
         installRemoveMenu(status, player);
         installRemoveMenu(stats, player);
+        installRemoveMenu(kc, player);
 
         return row;
     }

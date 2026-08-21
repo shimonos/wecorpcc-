@@ -1988,10 +1988,21 @@ public class WeCorpPanel extends PluginPanel
                 )
         );
 
+        /*
+         * Preserve the polished panel design and colors.
+         * Only the row layout changes:
+         * - KC is under the player name
+         * - customer progress is centered on a full row underneath
+         */
+        int rowHeight =
+                category == PlayerCategory.CUSTOMER
+                        ? 76
+                        : 58;
+
         row.setMaximumSize(
                 new Dimension(
                         Integer.MAX_VALUE,
-                        50
+                        rowHeight
                 )
         );
 
@@ -2025,14 +2036,17 @@ public class WeCorpPanel extends PluginPanel
 
         circleConstraints.gridx = 0;
         circleConstraints.gridy = 0;
-        circleConstraints.gridheight = 2;
+        circleConstraints.gridheight =
+                category == PlayerCategory.CUSTOMER
+                        ? 4
+                        : 3;
 
         circleConstraints.anchor =
-                GridBagConstraints.WEST;
+                GridBagConstraints.NORTHWEST;
 
         circleConstraints.insets =
                 new Insets(
-                        0,
+                        1,
                         0,
                         0,
                         5
@@ -2044,7 +2058,10 @@ public class WeCorpPanel extends PluginPanel
         );
 
         /*
-         * Column 2: player name and status.
+         * Column 2: player name, KC, then status/details.
+         *
+         * KC is intentionally here instead of the far right so RuneLite
+         * can never clip it on a narrow sidebar.
          */
         JPanel namePanel =
                 new JPanel();
@@ -2058,13 +2075,6 @@ public class WeCorpPanel extends PluginPanel
 
         namePanel.setBackground(
                 ColorScheme.DARK_GRAY_COLOR
-        );
-
-        namePanel.setMinimumSize(
-                new Dimension(
-                        0,
-                        38
-                )
         );
 
         JLabel nameLabel =
@@ -2082,6 +2092,26 @@ public class WeCorpPanel extends PluginPanel
                         .deriveFont(
                                 Font.BOLD,
                                 13f
+                        )
+        );
+
+        JLabel kcLabel =
+                new JLabel(
+                        "KC " + player.kills
+                );
+
+        kcLabel.setForeground(
+                category == PlayerCategory.CUSTOMER
+                        ? CUSTOMER_COLOR
+                        : NORMAL_TEXT_COLOR
+        );
+
+        kcLabel.setFont(
+                kcLabel
+                        .getFont()
+                        .deriveFont(
+                                Font.BOLD,
+                                10f
                         )
         );
 
@@ -2108,7 +2138,20 @@ public class WeCorpPanel extends PluginPanel
                         )
         );
 
+        nameLabel.setAlignmentX(
+                Component.LEFT_ALIGNMENT
+        );
+
+        kcLabel.setAlignmentX(
+                Component.LEFT_ALIGNMENT
+        );
+
+        detailsLabel.setAlignmentX(
+                Component.LEFT_ALIGNMENT
+        );
+
         namePanel.add(nameLabel);
+        namePanel.add(kcLabel);
         namePanel.add(detailsLabel);
 
         GridBagConstraints nameConstraints =
@@ -2116,14 +2159,14 @@ public class WeCorpPanel extends PluginPanel
 
         nameConstraints.gridx = 1;
         nameConstraints.gridy = 0;
-        nameConstraints.gridheight = 2;
+        nameConstraints.gridheight = 3;
         nameConstraints.weightx = 1.0;
 
         nameConstraints.fill =
                 GridBagConstraints.HORIZONTAL;
 
         nameConstraints.anchor =
-                GridBagConstraints.WEST;
+                GridBagConstraints.NORTHWEST;
 
         nameConstraints.insets =
                 new Insets(
@@ -2140,6 +2183,7 @@ public class WeCorpPanel extends PluginPanel
 
         /*
          * Column 3: special attacks.
+         * Keep the polished design's spec column and colors.
          */
         String specText =
                 player.specText == null ||
@@ -2168,21 +2212,21 @@ public class WeCorpPanel extends PluginPanel
 
         specLabel.setPreferredSize(
                 new Dimension(
-                        48,
+                        52,
                         38
                 )
         );
 
         specLabel.setMinimumSize(
                 new Dimension(
-                        48,
+                        42,
                         38
                 )
         );
 
         specLabel.setMaximumSize(
                 new Dimension(
-                        48,
+                        58,
                         38
                 )
         );
@@ -2192,17 +2236,17 @@ public class WeCorpPanel extends PluginPanel
 
         specConstraints.gridx = 2;
         specConstraints.gridy = 0;
-        specConstraints.gridheight = 2;
+        specConstraints.gridheight = 3;
 
         specConstraints.anchor =
-                GridBagConstraints.CENTER;
+                GridBagConstraints.NORTHEAST;
 
         specConstraints.insets =
                 new Insets(
                         0,
                         1,
                         0,
-                        2
+                        1
                 );
 
         row.add(
@@ -2211,71 +2255,9 @@ public class WeCorpPanel extends PluginPanel
         );
 
         /*
-         * Column 4: KC and customer package progress.
-         *
-         * Separate labels prevent the right side from being
-         * cut off by HTML sizing.
+         * Customer progress bar:
+         * own centered row across the usable player width.
          */
-        JPanel rightPanel =
-                new JPanel();
-
-        rightPanel.setLayout(
-                new BoxLayout(
-                        rightPanel,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-        rightPanel.setBackground(
-                ColorScheme.DARK_GRAY_COLOR
-        );
-
-        rightPanel.setPreferredSize(
-                new Dimension(70, 42)
-        );
-
-        rightPanel.setMinimumSize(
-                new Dimension(70, 42)
-        );
-
-        rightPanel.setMaximumSize(
-                new Dimension(70, 42)
-        );
-
-        JLabel kcLabel =
-                new JLabel(
-                        "KC " + player.kills,
-                        SwingConstants.RIGHT
-                );
-
-        kcLabel.setForeground(
-                category == PlayerCategory.CUSTOMER
-                        ? CUSTOMER_COLOR
-                        : NORMAL_TEXT_COLOR
-        );
-
-        kcLabel.setFont(
-                kcLabel
-                        .getFont()
-                        .deriveFont(
-                                Font.BOLD,
-                                11f
-                        )
-        );
-
-        kcLabel.setAlignmentX(
-                Component.RIGHT_ALIGNMENT
-        );
-
-        kcLabel.setMaximumSize(
-                new Dimension(
-                        70,
-                        20
-                )
-        );
-
-        rightPanel.add(kcLabel);
-
         JProgressBar packageProgressBar =
                 new JProgressBar();
 
@@ -2289,20 +2271,16 @@ public class WeCorpPanel extends PluginPanel
         packageProgressBar.setBorderPainted(false);
         packageProgressBar.setFocusable(false);
 
-        packageProgressBar.setAlignmentX(
-                Component.RIGHT_ALIGNMENT
-        );
-
         packageProgressBar.setPreferredSize(
-                new Dimension(66, 17)
+                new Dimension(130, 17)
         );
 
         packageProgressBar.setMinimumSize(
-                new Dimension(66, 17)
+                new Dimension(105, 17)
         );
 
         packageProgressBar.setMaximumSize(
-                new Dimension(66, 17)
+                new Dimension(150, 17)
         );
 
         packageProgressBar.setBackground(
@@ -2368,29 +2346,28 @@ public class WeCorpPanel extends PluginPanel
             packageProgressBar.setVisible(false);
         }
 
-        rightPanel.add(packageProgressBar);
-
-        GridBagConstraints rightConstraints =
+        GridBagConstraints progressConstraints =
                 new GridBagConstraints();
 
-        rightConstraints.gridx = 3;
-        rightConstraints.gridy = 0;
-        rightConstraints.gridheight = 2;
+        progressConstraints.gridx = 1;
+        progressConstraints.gridy = 3;
+        progressConstraints.gridwidth = 2;
+        progressConstraints.weightx = 1.0;
 
-        rightConstraints.anchor =
-                GridBagConstraints.EAST;
+        progressConstraints.anchor =
+                GridBagConstraints.CENTER;
 
-        rightConstraints.insets =
+        progressConstraints.insets =
                 new Insets(
+                        4,
                         0,
-                        1,
                         0,
-                        1
+                        0
                 );
 
         row.add(
-                rightPanel,
-                rightConstraints
+                packageProgressBar,
+                progressConstraints
         );
 
         /*
@@ -2417,22 +2394,17 @@ public class WeCorpPanel extends PluginPanel
         );
 
         installPlayerMenu(
+                kcLabel,
+                player.normalizedName
+        );
+
+        installPlayerMenu(
                 detailsLabel,
                 player.normalizedName
         );
 
         installPlayerMenu(
                 specLabel,
-                player.normalizedName
-        );
-
-        installPlayerMenu(
-                rightPanel,
-                player.normalizedName
-        );
-
-        installPlayerMenu(
-                kcLabel,
                 player.normalizedName
         );
 
