@@ -86,7 +86,7 @@ public class WeCorpPanel extends PluginPanel
 
     private final JLabel titleLabel =
             new JLabel(
-                    "WeCorpCC",
+                    "WeCorpCC v2",
                     SwingConstants.CENTER
             );
 
@@ -267,7 +267,7 @@ public class WeCorpPanel extends PluginPanel
         playerScrollPane.setBorder(null);
 
         playerScrollPane.setWheelScrollingEnabled(
-                true
+                false
         );
 
         playerScrollPane.setHorizontalScrollBarPolicy(
@@ -708,11 +708,14 @@ public class WeCorpPanel extends PluginPanel
             Component component)
     {
         /*
-         * Forward wheel movement from the player list and its
-         * child components to the inner player scrollbar.
+         * Forward wheel movement from the player-list area to RuneLite's
+         * OUTER plugin-panel scrollbar.
          *
-         * The property marker prevents duplicate listeners from
-         * being attached to persistent Swing components.
+         * This fixes the split behavior where Kills/KPH scrolled the whole
+         * panel but player rows scrolled only the inner player list.
+         *
+         * No layout, colors, sizes, KC, progress bars or player logic are
+         * changed here.
          */
         if (component instanceof javax.swing.JComponent)
         {
@@ -721,14 +724,14 @@ public class WeCorpPanel extends PluginPanel
 
             if (Boolean.TRUE.equals(
                     swingComponent.getClientProperty(
-                            "wecorpcc.playerScrollInstalled"
+                            "wecorpcc.outerScrollInstalled"
                     )))
             {
                 return;
             }
 
             swingComponent.putClientProperty(
-                    "wecorpcc.playerScrollInstalled",
+                    "wecorpcc.outerScrollInstalled",
                     Boolean.TRUE
             );
         }
@@ -736,11 +739,15 @@ public class WeCorpPanel extends PluginPanel
         component.addMouseWheelListener(
                 event ->
                 {
-                    javax.swing.JScrollBar scrollBar =
-                            playerScrollPane
-                                    .getVerticalScrollBar();
+                    javax.swing.JScrollPane outerScrollPane =
+                            findOuterScrollPane();
 
-                    if (!scrollBar.isVisible())
+                    javax.swing.JScrollBar scrollBar =
+                            outerScrollPane != null
+                                    ? outerScrollPane.getVerticalScrollBar()
+                                    : playerScrollPane.getVerticalScrollBar();
+
+                    if (scrollBar == null)
                     {
                         return;
                     }
@@ -748,12 +755,15 @@ public class WeCorpPanel extends PluginPanel
                     int direction =
                             event.getWheelRotation();
 
+                    if (direction == 0)
+                    {
+                        return;
+                    }
+
                     int increment =
                             Math.max(
                                     18,
-                                    scrollBar.getUnitIncrement(
-                                            direction
-                                    )
+                                    scrollBar.getUnitIncrement(direction)
                             );
 
                     int maximumValue =
@@ -795,6 +805,28 @@ public class WeCorpPanel extends PluginPanel
             }
         }
     }
+
+    private javax.swing.JScrollPane findOuterScrollPane()
+    {
+        /*
+         * Start ABOVE the inner playerScrollPane so we never select it.
+         */
+        java.awt.Container parent =
+                playerScrollPane.getParent();
+
+        while (parent != null)
+        {
+            if (parent instanceof javax.swing.JScrollPane)
+            {
+                return (javax.swing.JScrollPane) parent;
+            }
+
+            parent = parent.getParent();
+        }
+
+        return null;
+    }
+
     private JPanel createButtonPanel()
     {
         JPanel buttonPanel =

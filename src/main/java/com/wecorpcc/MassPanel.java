@@ -3,6 +3,7 @@ package com.wecorpcc;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -168,9 +169,13 @@ public class MassPanel extends PluginPanel
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
         );
         playerScrollPane.getVerticalScrollBar().setUnitIncrement(18);
+        playerScrollPane.setWheelScrollingEnabled(false);
         playerScrollPane.getViewport().setBackground(
                 ColorScheme.DARK_GRAY_COLOR
         );
+
+        enablePlayerListScrolling(playerListPanel);
+        enablePlayerListScrolling(playerScrollPane.getViewport());
 
         JPanel bottomPanel = new JPanel();
         bottomPanel.setLayout(
@@ -420,6 +425,121 @@ public class MassPanel extends PluginPanel
         c2.anchor = GridBagConstraints.EAST;
         c2.insets = new Insets(1, 5, 1, 0);
         panel.add(valueLabel, c2);
+    }
+
+    private void enablePlayerListScrolling(
+            Component component)
+    {
+        /*
+         * Forward wheel movement from the Mass player-list area to
+         * RuneLite's OUTER plugin-panel scrollbar.
+         *
+         * This changes only mouse-wheel behavior.  The Mass design,
+         * colors, counters, rows, KC and drop/spec logic stay untouched.
+         */
+        if (component instanceof javax.swing.JComponent)
+        {
+            javax.swing.JComponent swingComponent =
+                    (javax.swing.JComponent) component;
+
+            if (Boolean.TRUE.equals(
+                    swingComponent.getClientProperty(
+                            "wecorpcc.massOuterScrollInstalled"
+                    )))
+            {
+                return;
+            }
+
+            swingComponent.putClientProperty(
+                    "wecorpcc.massOuterScrollInstalled",
+                    Boolean.TRUE
+            );
+        }
+
+        component.addMouseWheelListener(
+                event ->
+                {
+                    javax.swing.JScrollPane outerScrollPane =
+                            findOuterScrollPane();
+
+                    javax.swing.JScrollBar scrollBar =
+                            outerScrollPane != null
+                                    ? outerScrollPane.getVerticalScrollBar()
+                                    : playerScrollPane.getVerticalScrollBar();
+
+                    if (scrollBar == null)
+                    {
+                        return;
+                    }
+
+                    int direction =
+                            event.getWheelRotation();
+
+                    if (direction == 0)
+                    {
+                        return;
+                    }
+
+                    int increment =
+                            Math.max(
+                                    18,
+                                    scrollBar.getUnitIncrement(direction)
+                            );
+
+                    int maximumValue =
+                            Math.max(
+                                    scrollBar.getMinimum(),
+                                    scrollBar.getMaximum() -
+                                            scrollBar.getVisibleAmount()
+                            );
+
+                    int newValue =
+                            scrollBar.getValue() +
+                                    (direction * increment * 3);
+
+                    scrollBar.setValue(
+                            Math.max(
+                                    scrollBar.getMinimum(),
+                                    Math.min(
+                                            newValue,
+                                            maximumValue
+                                    )
+                            )
+                    );
+
+                    event.consume();
+                }
+        );
+
+        if (component instanceof Container)
+        {
+            Container container =
+                    (Container) component;
+
+            for (Component child :
+                    container.getComponents())
+            {
+                enablePlayerListScrolling(child);
+            }
+        }
+    }
+
+    private javax.swing.JScrollPane findOuterScrollPane()
+    {
+        java.awt.Container parent =
+                playerScrollPane.getParent();
+
+        while (parent != null)
+        {
+            if (parent instanceof javax.swing.JScrollPane)
+            {
+                return (javax.swing.JScrollPane) parent;
+            }
+
+            parent = parent.getParent();
+        }
+
+        return null;
     }
 
     private void setupButtons()
@@ -903,6 +1023,8 @@ public class MassPanel extends PluginPanel
         header.addMouseListener(collapseListener);
         label.addMouseListener(collapseListener);
 
+        enablePlayerListScrolling(header);
+
         playerListPanel.add(header);
         playerListPanel.add(Box.createVerticalStrut(3));
 
@@ -1140,6 +1262,8 @@ public class MassPanel extends PluginPanel
         installRemoveMenu(status, player);
         installRemoveMenu(stats, player);
         installRemoveMenu(kc, player);
+
+        enablePlayerListScrolling(row);
 
         return row;
     }
