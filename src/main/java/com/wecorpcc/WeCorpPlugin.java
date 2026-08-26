@@ -339,6 +339,7 @@ public class WeCorpPlugin extends Plugin {
         killStartTime = 0;
         corpDeathTime = 0;
         corpAlive = false;
+        corpKillProcessed = false;
 
         if (massPanel != null)
         {
@@ -466,8 +467,12 @@ public class WeCorpPlugin extends Plugin {
             tripStartTime = System.currentTimeMillis();
         }
 
-        if (!corpAlive && corpFound) {
+        if (!corpAlive &&
+                corpFound &&
+                (corpDeathTime == 0 ||
+                        getRespawnSecondsRemaining() == 0)) {
             corpAlive = true;
+            corpKillProcessed = false;
             killStartTime = System.currentTimeMillis();
             corpDeathTime = 0;
         }
@@ -1004,68 +1009,70 @@ public class WeCorpPlugin extends Plugin {
                 normalizeName(receiverName);
 
         /*
-         * Save everyone who attended this kill before clearing
-         * the current-kill attendance set.
+         * Corp can print several different loot lines for one death.
+         * Award KC/package KC/total kills only once for this Corp spawn.
          */
-        lastKillAttendees.clear();
-        lastKillAttendees.addAll(
-                currentKillAttendees
-        );
-
-        currentKillAttendees.clear();
-
-        /*
-         * Give the receiver +1 KC.
-         */
-        boolean found = false;
-
-        for (String existingName :
-                new HashSet<>(killCount.keySet()))
+        if (!corpKillProcessed)
         {
-            if (normalizeName(existingName)
-                    .equals(normalizedReceiverName))
-            {
-                killCount.put(
-                        existingName,
-                        killCount.getOrDefault(
-                                existingName,
-                                0
-                        ) + 1
-                );
+            corpKillProcessed = true;
 
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            String cleanReceiverName =
-                    removeYouSuffix(receiverName);
-
-            killCount.put(
-                    cleanReceiverName,
-                    1
+            lastKillAttendees.clear();
+            lastKillAttendees.addAll(
+                    currentKillAttendees
             );
+
+            currentKillAttendees.clear();
+
+            boolean found = false;
+
+            for (String existingName :
+                    new HashSet<>(killCount.keySet()))
+            {
+                if (normalizeName(existingName)
+                        .equals(normalizedReceiverName))
+                {
+                    killCount.put(
+                            existingName,
+                            killCount.getOrDefault(
+                                    existingName,
+                                    0
+                            ) + 1
+                    );
+
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                String cleanReceiverName =
+                        removeYouSuffix(receiverName);
+
+                killCount.put(
+                        cleanReceiverName,
+                        1
+                );
+            }
+
+            panel.recordCustomerKill(
+                    receiverName
+            );
+
+            totalKills++;
         }
-
-        /*
-         * Existing Boosting customer package tracking.
-         */
-        panel.recordCustomerKill(
-                receiverName
-        );
-
-        totalKills++;
 
         /*
          * Mass Mode total KC and valuable-drop tracking.
          */
         if (massPanel != null)
         {
-            massPanel.setTotalKills(
-                    totalKills
-            );
+            if (corpKillProcessed)
+            {
+                massPanel.setTotalKills(
+                        totalKills
+                );
+            }
 
             if (lowerMessage.contains("elysian sigil"))
             {
@@ -1106,30 +1113,34 @@ public class WeCorpPlugin extends Plugin {
             massPanel.resetCurrentKillSpecs();
         }
 
-        /*
-         * Corp has died.
-         *
-         * Start the respawn countdown and reset the current kill timer.
-         */
-        corpAlive = false;
-        corpDeathTime =
-                System.currentTimeMillis();
-
-        killStartTime = 0;
-
-        clearPendingSoloSpec();
-        clearPendingMassBgs();
-
-        if (soloPanel != null)
+        if (corpAlive)
         {
-            soloPanel.resetProgress();
-        }
+            /*
+             * Corp has died.
+             *
+             * Start the respawn countdown and reset the current kill timer.
+             */
+            corpAlive = false;
+            corpDeathTime =
+                    System.currentTimeMillis();
 
-        /*
-         * Reset Boosting DWH, BGS, Elder Maul and Voidwaker
-         * information for the next Corp kill.
-         */
-        clearData();
+            killStartTime = 0;
+
+            clearPendingSoloSpec();
+            clearPendingMassBgs();
+
+            if (soloPanel != null)
+            {
+                soloPanel.resetProgress();
+            }
+
+            /*
+             * Reset Boosting DWH, BGS, Elder Maul and Voidwaker
+             * information for the next Corp kill.
+             */
+            clearData();
+
+        }
 
         updatePlayerList();
     }
@@ -1418,6 +1429,7 @@ public class WeCorpPlugin extends Plugin {
         killStartTime = 0;
         corpDeathTime = 0;
         corpAlive = false;
+        corpKillProcessed = false;
         atCorp = false;
         lastAnnouncedTarget = 0;
         lastAtCorpTime = 0;
