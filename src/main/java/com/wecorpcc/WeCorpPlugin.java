@@ -250,6 +250,15 @@ public class WeCorpPlugin extends Plugin {
                 navButton
         );
 
+        /*
+         * Always start WeCorpCC in Boosting mode when RuneLite starts.
+         * This changes only the initial selected panel.
+         */
+        configManager.setConfiguration(
+                "wecorpcc",
+                "pluginMode",
+                PluginMode.BOOSTING
+        );
         applyPluginMode();
 
         updateWaitingStatus();

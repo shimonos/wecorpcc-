@@ -74,6 +74,7 @@ public class MassPanel extends PluginPanel
     private final JButton resetButton = new JButton("Reset Mass");
     private final JButton guideButton = new JButton("Guide");
     private final JButton supportButton = new JButton("Support RuneLite");
+    private final JButton discordButton = new JButton("Join WeCorpCC Discord");
 
     private final Map<String, PlayerMassData> players =
             new LinkedHashMap<>();
@@ -547,12 +548,18 @@ public class MassPanel extends PluginPanel
         resetButton.setFocusable(false);
         guideButton.setFocusable(false);
         supportButton.setFocusable(false);
+        discordButton.setFocusable(false);
 
         resetButton.addActionListener(event -> confirmReset());
         guideButton.addActionListener(event -> showGuide());
         supportButton.addActionListener(
                 event -> LinkBrowser.browse(
                         "https://www.patreon.com/runelite"
+                )
+        );
+        discordButton.addActionListener(
+                event -> LinkBrowser.browse(
+                        "https://discord.gg/DvsmHfHnVX"
                 )
         );
     }
@@ -568,7 +575,18 @@ public class MassPanel extends PluginPanel
         panel.add(guideButton);
         panel.add(supportButton);
 
-        return panel;
+        JPanel wrapper = new JPanel();
+        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.Y_AXIS));
+        wrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        discordButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        wrapper.add(panel);
+        wrapper.add(Box.createVerticalStrut(5));
+        wrapper.add(discordButton);
+
+        return wrapper;
     }
 
     private JPanel createDivider()
@@ -742,11 +760,6 @@ public class MassPanel extends PluginPanel
             Set<String> attendees)
     {
         arcaneCount++;
-        showSigilAttendance(
-                "ARCANE SIGIL",
-                receiverName,
-                attendees
-        );
         refreshAll();
     }
 
@@ -755,11 +768,6 @@ public class MassPanel extends PluginPanel
             Set<String> attendees)
     {
         spectralCount++;
-        showSigilAttendance(
-                "SPECTRAL SIGIL",
-                receiverName,
-                attendees
-        );
         refreshAll();
     }
 
@@ -768,11 +776,6 @@ public class MassPanel extends PluginPanel
             Set<String> attendees)
     {
         elysianCount++;
-        showSigilAttendance(
-                "ELYSIAN SIGIL",
-                receiverName,
-                attendees
-        );
         refreshAll();
     }
 

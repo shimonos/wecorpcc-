@@ -141,7 +141,10 @@ public class WeCorpPanel extends PluginPanel
             new JButton("Guide");
 
     private final JButton donateButton =
-            new JButton("Support");
+            new JButton("Support RuneLite");
+
+    private final JButton discordButton =
+            new JButton("Join WeCorpCC Discord");
 
     private final Map<String, String> currentPlayerInfo =
             new LinkedHashMap<>();
@@ -680,6 +683,7 @@ public class WeCorpPanel extends PluginPanel
         showHiddenButton.setFocusable(false);
         guideButton.setFocusable(false);
         donateButton.setFocusable(false);
+        discordButton.setFocusable(false);
 
         resetTripButton.addActionListener(
                 event ->
@@ -700,6 +704,13 @@ public class WeCorpPanel extends PluginPanel
                 event ->
                         LinkBrowser.browse(
                                 "https://www.patreon.com/runelite"
+                        )
+        );
+
+        discordButton.addActionListener(
+                event ->
+                        LinkBrowser.browse(
+                                "https://discord.gg/HXAknJguVH"
                         )
         );
     }
@@ -875,6 +886,21 @@ public class WeCorpPanel extends PluginPanel
         secondRow.add(guideButton);
         secondRow.add(donateButton);
 
+        JPanel thirdRow =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.CENTER,
+                                6,
+                                0
+                        )
+                );
+
+        thirdRow.setBackground(
+                ColorScheme.DARK_GRAY_COLOR
+        );
+
+        thirdRow.add(discordButton);
+
         buttonPanel.add(firstRow);
 
         buttonPanel.add(
@@ -883,10 +909,16 @@ public class WeCorpPanel extends PluginPanel
 
         buttonPanel.add(secondRow);
 
+        buttonPanel.add(
+                Box.createVerticalStrut(5)
+        );
+
+        buttonPanel.add(thirdRow);
+
         buttonPanel.setMaximumSize(
                 new Dimension(
                         Integer.MAX_VALUE,
-                        80
+                        115
                 )
         );
 
