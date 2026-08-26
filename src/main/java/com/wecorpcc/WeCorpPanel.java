@@ -11,6 +11,7 @@ import javax.swing.JProgressBar;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
@@ -710,7 +711,7 @@ public class WeCorpPanel extends PluginPanel
         discordButton.addActionListener(
                 event ->
                         LinkBrowser.browse(
-                                "https://discord.gg/HXAknJguVH"
+                                "https://discord.gg/DvsmHfHnVX"
                         )
         );
     }
@@ -856,8 +857,9 @@ public class WeCorpPanel extends PluginPanel
 
         JPanel firstRow =
                 new JPanel(
-                        new FlowLayout(
-                                FlowLayout.CENTER,
+                        new GridLayout(
+                                1,
+                                2,
                                 6,
                                 0
                         )
@@ -872,8 +874,9 @@ public class WeCorpPanel extends PluginPanel
 
         JPanel secondRow =
                 new JPanel(
-                        new FlowLayout(
-                                FlowLayout.CENTER,
+                        new GridLayout(
+                                1,
+                                2,
                                 6,
                                 0
                         )
