@@ -962,7 +962,7 @@ public class WeCorpPanel extends PluginPanel
                         "PLAYER COLORS\n" +
                         "Green: Active at Corp\n" +
                         "Red: Low HP\n" +
-                        "Yellow: Customer\n" +
+                        "Yellow: Clients\n" +
                         "Gray: Away / AFK\n\n" +
 
                         "LOW HP WATCH LIST\n" +
@@ -979,8 +979,8 @@ public class WeCorpPanel extends PluginPanel
                         "Add +1 Kill\n" +
                         "Remove -1 Kill\n" +
                         "Reset Player KC\n" +
-                        "Set as Customer\n" +
-                        "Remove Customer\n" +
+                        "Set as Client\n" +
+                        "Remove Client\n" +
                         "Set Package Size\n" +
                         "Add +1 Package Kill\n" +
                         "Reset Package\n" +
@@ -999,10 +999,10 @@ public class WeCorpPanel extends PluginPanel
                         "DWH, BGS, Elder Maul and Voidwaker are tracked.\n" +
                         "Specs reset when Corp dies or when you leave Corp.\n\n" +
 
-                        "CUSTOMERS\n" +
-                        "Customers appear in their own yellow section.\n" +
+                        "CLIENTS\n" +
+                        "Clients appear in their own yellow section.\n" +
                         "You can set package size and track package kills.\n" +
-                        "When a customer receives the Corp drop, their KC and " +
+                        "When a Client receives the Corp drop, their KC and " +
                         "package progress update automatically.\n\n" +
 
                         "RESET TRIP\n" +
@@ -1741,7 +1741,7 @@ public class WeCorpPanel extends PluginPanel
         );
 
         addCategory(
-                "Customers",
+                "Clients",
                 customerPlayers,
                 PlayerCategory.CUSTOMER
         );
@@ -2504,7 +2504,7 @@ public class WeCorpPanel extends PluginPanel
 
             if (customerPackage == null)
             {
-                return "Customer";
+                return "Client";
             }
 
             if (customerPackage.completed)
@@ -2780,7 +2780,7 @@ public class WeCorpPanel extends PluginPanel
         {
             JMenuItem removeCustomerItem =
                     new JMenuItem(
-                            "Remove Customer"
+                            "Remove Client"
                     );
 
             removeCustomerItem.addActionListener(
@@ -2798,7 +2798,7 @@ public class WeCorpPanel extends PluginPanel
         {
             JMenuItem setCustomerItem =
                     new JMenuItem(
-                            "Set as Customer"
+                            "Set as Client"
                     );
 
             setCustomerItem.addActionListener(
@@ -3056,8 +3056,8 @@ public class WeCorpPanel extends PluginPanel
                         this,
                         "Remove " +
                                 displayName +
-                                " as a customer?",
-                        "Remove Customer",
+                                " as a client?",
+                        "Remove Client",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.QUESTION_MESSAGE
                 );
@@ -3362,7 +3362,7 @@ public class WeCorpPanel extends PluginPanel
                 JOptionPane.showConfirmDialog(
                         this,
                         "Reset the full WeCorpCC trip?\n" +
-                                "This clears KC, customers, packages and hidden players.",
+                                "This clears KC, clients, packages and hidden players.",
                         "Reset Trip",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.WARNING_MESSAGE

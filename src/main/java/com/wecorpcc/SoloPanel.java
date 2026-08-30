@@ -24,6 +24,7 @@ import javax.swing.Timer;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 
+
 public class SoloPanel extends PluginPanel
 {
     private static final int DWH_TARGET = 4;
@@ -386,13 +387,7 @@ public class SoloPanel extends PluginPanel
                 )
         );
 
-        addPreparationRow(
-                panel,
-                0,
-                "DWH Specs",
-                dwhValueLabel,
-                dwhProgress
-        );
+        addPreparationRow(panel, 0, "DWH / Maul", dwhValueLabel, dwhProgress);
 
         addPreparationRow(
                 panel,
@@ -402,13 +397,7 @@ public class SoloPanel extends PluginPanel
                 bgsProgress
         );
 
-        addPreparationRow(
-                panel,
-                2,
-                "Arclight Hits",
-                arclightValueLabel,
-                arclightProgress
-        );
+        addPreparationRow(panel, 2, "Arclight / Emberlight", arclightValueLabel, arclightProgress);
 
         return panel;
     }
@@ -795,11 +784,10 @@ public class SoloPanel extends PluginPanel
         StringBuilder text =
                 new StringBuilder("<html><center>");
 
-        if (remainingDwh > 0)
-        {
+        if (remainingDwh > 0) {
             text.append("Need ")
                     .append(remainingDwh)
-                    .append(" more DWH<br>");
+                    .append(" more DWH / Maul<br>");
         }
 
         if (remainingBgs > 0)
@@ -809,11 +797,10 @@ public class SoloPanel extends PluginPanel
                     .append(" BGS damage<br>");
         }
 
-        if (remainingArclight > 0)
-        {
+        if (remainingArclight > 0) {
             text.append("Need ")
                     .append(remainingArclight)
-                    .append(" more Arclight");
+                    .append(" more Arclight / Emberlight<br>");
         }
 
         text.append("</center></html>");
@@ -865,7 +852,7 @@ public class SoloPanel extends PluginPanel
     {
         String guide =
                 "WeCorpCC Solo Guide\n\n" +
-                        "DWH\n" +
+                        "DWH / Maul\n" +
                         "- 4 successful specs\n" +
                         "- Zero damage doesn't count\n\n" +
 
@@ -873,7 +860,7 @@ public class SoloPanel extends PluginPanel
                         "- Deal 200 total spec damage\n" +
                         "- Zero damage doesn't count\n\n" +
 
-                        "Arclight\n" +
+                        "Arclight / Emberlight\n" +
                         "- 20 successful specs\n" +
                         "- Normal attacks don't count\n" +
                         "- Zero damage doesn't count\n\n" +

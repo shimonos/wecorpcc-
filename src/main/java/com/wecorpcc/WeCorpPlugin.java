@@ -31,6 +31,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.api.gameval.ItemID;
 
 @PluginDescriptor(
         name = "WeCorpCC",
@@ -44,6 +45,7 @@ public class WeCorpPlugin extends Plugin {
     private boolean pendingSoloDwh;
     private boolean pendingSoloBgs;
     private boolean pendingSoloArclight;
+    private boolean pendingSoloMaul;
     private int pendingSoloSpecGameCycle = 0;
 
     private boolean pendingMassBgs;
@@ -55,6 +57,8 @@ public class WeCorpPlugin extends Plugin {
     private static final int BGS_ANIM_2 = 7643;
     private static final int ELDER_MAUL_ANIM = 7516;
     private static final int VOIDWAKER_ANIM = 11275;
+    private static final int ELDER_MAUL_SPEC_ANIM = 11124;
+    private static final int ELDER_MAUL_SPEC_GRAPHIC = 2804;
 
     private static final int CORP_RESPAWN_SECONDS = 30;
     private long lastAtCorpTime;
@@ -396,7 +400,8 @@ public class WeCorpPlugin extends Plugin {
         }
         if (pendingSoloDwh ||
                 pendingSoloBgs ||
-                pendingSoloArclight)
+                pendingSoloArclight ||
+                pendingSoloMaul)
         {
             int elapsedCycles =
                     client.getGameCycle() -
@@ -658,6 +663,15 @@ public class WeCorpPlugin extends Plugin {
 
         int animation =
                 player.getAnimation();
+        System.out.println(
+                "WECORP DEBUG: " + name +
+                        " animation=" + animation
+        );
+        System.out.println(
+                "WECORP DEBUG GRAPHIC: " + name +
+                        " graphic=" + player.getGraphic()
+        );
+
         if (animation == FANG_SPEC_ANIM)
         {
             fangCount.put(
@@ -708,6 +722,42 @@ public class WeCorpPlugin extends Plugin {
                     player == client.getLocalPlayer())
             {
                 pendingSoloDwh = true;
+                pendingSoloBgs = false;
+                pendingSoloArclight = false;
+
+                pendingSoloSpecGameCycle =
+                        client.getGameCycle();
+            }
+        }
+        else if (animation == ELDER_MAUL_SPEC_ANIM &&
+                player.getInteracting() instanceof NPC &&
+                ((NPC) player.getInteracting()).getId() == CORP_ID)
+        {
+            /*
+             * Elder Maul special.
+             *
+             * Unlike the local special-energy varp, the animation is visible
+             * for both the local player and remote players.
+             */
+
+            if (config.pluginMode() == PluginMode.BOOSTING)
+            {
+                maulCount.put(
+                        name,
+                        maulCount.getOrDefault(name, 0) + 1
+                );
+            }
+
+            /*
+             * Solo only counts the Maul after the local player's real
+             * Corp hitsplat confirms that it successfully landed.
+             */
+            if (config.pluginMode() == PluginMode.SOLO &&
+                    soloPanel != null &&
+                    player == client.getLocalPlayer())
+            {
+                pendingSoloMaul = true;
+                pendingSoloDwh = false;
                 pendingSoloBgs = false;
                 pendingSoloArclight = false;
 
@@ -833,8 +883,15 @@ public class WeCorpPlugin extends Plugin {
                                 .getSlotIdx()
                 );
 
-        return weapon != null &&
-                weapon.getId() == ARCLIGHT_ID;
+        if (weapon == null)
+        {
+            return false;
+        }
+
+        int weaponId = weapon.getId();
+
+        return weaponId == ARCLIGHT_ID ||
+                weaponId == net.runelite.api.gameval.ItemID.EMBERLIGHT;
     }
     @Subscribe
     public void onHitsplatApplied(HitsplatApplied event)
@@ -910,7 +967,17 @@ public class WeCorpPlugin extends Plugin {
 
             return;
         }
+        if (pendingSoloMaul)
+        {
+            clearPendingSoloSpec();
 
+            if (damage > 0)
+            {
+                soloPanel.addDwhSpec();
+            }
+
+            return;
+        }
         if (pendingSoloBgs)
         {
             clearPendingSoloSpec();
@@ -939,6 +1006,7 @@ public class WeCorpPlugin extends Plugin {
         pendingSoloDwh = false;
         pendingSoloBgs = false;
         pendingSoloArclight = false;
+        pendingSoloMaul = false;
         pendingSoloSpecGameCycle = 0;
     }
 
@@ -1563,36 +1631,11 @@ public class WeCorpPlugin extends Plugin {
         }
 
         /*
-         * Reliable local Elder Maul special detection:
-         * RuneLite itself detects a special attack from the SA-energy
-         * decrease, then checks the equipped weapon. This avoids relying
-         * on the obsolete/incorrect 7516 animation.
-         */
-        if (config.pluginMode() == PluginMode.BOOSTING &&
-                isElderMaulEquipped())
-        {
-            Player localPlayer = client.getLocalPlayer();
-
-            if (localPlayer != null &&
-                    localPlayer.getName() != null &&
-                    localPlayer.getInteracting() instanceof NPC &&
-                    ((NPC) localPlayer.getInteracting()).getId() == CORP_ID)
-            {
-                String name = localPlayer.getName();
-
-                maulCount.put(
-                        name,
-                        maulCount.getOrDefault(name, 0) + 1
-                );
-
-                updatePlayerList();
-            }
-
-            return;
-        }
-
-        /*
          * Existing Solo Arclight handling.
+         *
+         * Elder Maul is no longer handled here.
+         * Elder Maul is detected in onAnimationChanged()
+         * so remote players can also be tracked.
          */
         if (config.pluginMode() != PluginMode.SOLO ||
                 soloPanel == null ||
@@ -1604,11 +1647,12 @@ public class WeCorpPlugin extends Plugin {
         pendingSoloArclight = true;
         pendingSoloDwh = false;
         pendingSoloBgs = false;
+        pendingSoloMaul = false;
 
         pendingSoloSpecGameCycle =
                 client.getGameCycle();
-
     }
+
     @Provides
     WeCorpConfig provideConfig(ConfigManager configManager)
     {
