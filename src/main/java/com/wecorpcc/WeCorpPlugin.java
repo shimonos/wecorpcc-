@@ -663,14 +663,6 @@ public class WeCorpPlugin extends Plugin {
 
         int animation =
                 player.getAnimation();
-        System.out.println(
-                "WECORP DEBUG: " + name +
-                        " animation=" + animation
-        );
-        System.out.println(
-                "WECORP DEBUG GRAPHIC: " + name +
-                        " graphic=" + player.getGraphic()
-        );
 
         if (animation == FANG_SPEC_ANIM)
         {
