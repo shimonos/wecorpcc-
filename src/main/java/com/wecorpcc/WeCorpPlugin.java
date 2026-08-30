@@ -440,8 +440,7 @@ public class WeCorpPlugin extends Plugin {
                 break;
             }
         }
-
-        if (corpFound || inCorpRegion) {
+        if (inCorpRegion) {
             atCorp = true;
             notAtCorpTicks = 0;
         } else {
@@ -454,9 +453,7 @@ public class WeCorpPlugin extends Plugin {
 
                 clearData();
                 updatePlayerList();
-
             }
-
             notAtCorpTicks = 0;
         }
 
