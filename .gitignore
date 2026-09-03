@@ -6,4 +6,6 @@ build
 .classpath
 nbactions.xml
 nb-configuration.xml
-nbproject/
+nbproject/src/main/java/com/wecorpcc/wecorp-lobby-server/node_modules/
+buildlog.txt
+hs_err_pid*.log
