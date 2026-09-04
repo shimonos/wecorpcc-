@@ -46,7 +46,8 @@ import net.runelite.client.util.LinkBrowser;
 public class WeCorpPanel extends PluginPanel
 {
     private static final long AWAY_GRACE_PERIOD_MS = 90_000L;
-
+    private static final long CUSTOMER_AWAY_AFTER_MS =
+            3 * 60 * 1000L;
 
 
     private static final Color ACTIVE_COLOR =
@@ -1173,6 +1174,12 @@ public class WeCorpPanel extends PluginPanel
             refreshPlayerDisplay();
         });
     }
+    public boolean isCustomer(String playerName)
+    {
+        return customers.containsKey(
+                normalizeName(playerName)
+        );
+    }
 
     /*
      * Removes displayed spec text immediately after
@@ -1684,23 +1691,18 @@ public class WeCorpPanel extends PluginPanel
                             lastSeen
                     );
 
-            if (isCustomer)
+            if (isCustomer &&
+                    awayDuration < CUSTOMER_AWAY_AFTER_MS)
             {
-                customerPlayers.add(
-                        rowData
-                );
+                customerPlayers.add(rowData);
             }
             else if (isAway)
             {
-                awayPlayers.add(
-                        rowData
-                );
+                awayPlayers.add(rowData);
             }
             else
             {
-                activePlayers.add(
-                        rowData
-                );
+                activePlayers.add(rowData);
             }
         }
 

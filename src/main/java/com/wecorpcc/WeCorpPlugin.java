@@ -31,6 +31,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.api.gameval.ItemID;
 
 @PluginDescriptor(
@@ -46,6 +47,13 @@ public class WeCorpPlugin extends Plugin {
     private boolean pendingSoloBgs;
     private boolean pendingSoloArclight;
     private boolean pendingSoloMaul;
+
+    private boolean pendingOverlayDwh;
+    private boolean pendingOverlayMaul;
+    private int pendingOverlaySpecGameCycle = 0;
+
+    private int overlayDwhLanded = 0;
+    private int overlayMaulLanded = 0;
     private int pendingSoloSpecGameCycle = 0;
 
     private boolean pendingMassBgs;
@@ -59,6 +67,7 @@ public class WeCorpPlugin extends Plugin {
     private static final int VOIDWAKER_ANIM = 11275;
     private static final int ELDER_MAUL_SPEC_ANIM = 11124;
     private static final int ELDER_MAUL_SPEC_GRAPHIC = 2804;
+
 
     private static final int CORP_RESPAWN_SECONDS = 30;
     private long lastAtCorpTime;
@@ -94,7 +103,7 @@ public class WeCorpPlugin extends Plugin {
     private final Map<String, Integer> bgsCount = new HashMap<>();
     private final Map<String, Integer> maulCount = new HashMap<>();
     private final Map<String, Integer> voidwakerCount = new HashMap<>();
-    private final Map<String,Integer> fangCount =
+    private final Map<String, Integer> fangCount =
             new HashMap<>();
     private final Map<String, Integer> killCount = new HashMap<>();
     private final Map<String, Integer> massFangCount =
@@ -109,6 +118,7 @@ public class WeCorpPlugin extends Plugin {
     @Inject
     private Client client;
 
+
     @Inject
     private ClientThread clientThread;
 
@@ -120,24 +130,34 @@ public class WeCorpPlugin extends Plugin {
 
     @Inject
     private ClientToolbar clientToolbar;
+    @Inject
+    private OverlayManager overlayManager;
 
+    @Inject
+    private WeCorpOverlay weCorpOverlay;
     private WeCorpPanel panel;
     private MassPanel massPanel;
     private SoloPanel soloPanel;
     private ModePanel modePanel;
+    private CorpMassLobbyPanel corpMassLobbyPanel;
 
     private NavigationButton navButton;
 
 
     @Override
-    protected void startUp()
-    {
+    protected void startUp() {
+
         panel = new WeCorpPanel();
 
         massPanel = new MassPanel();
         massPanel.setResetCallback(this::resetMassMode);
 
         soloPanel = new SoloPanel();
+
+        corpMassLobbyPanel = new CorpMassLobbyPanel(
+                client,
+                clientThread
+        );
 
         soloPanel.setReadyCallback(() ->
                 clientThread.invoke(() ->
@@ -154,6 +174,7 @@ public class WeCorpPlugin extends Plugin {
                 panel,
                 massPanel,
                 soloPanel,
+                corpMassLobbyPanel,
                 mode ->
                 {
                     configManager.setConfiguration(
@@ -188,8 +209,7 @@ public class WeCorpPlugin extends Plugin {
                     killCount.getOrDefault(cleanName, 0) + 1
             );
 
-            if (massPanel != null)
-            {
+            if (massPanel != null) {
                 massPanel.setTotalKills(totalKills);
             }
 
@@ -206,8 +226,7 @@ public class WeCorpPlugin extends Plugin {
         Graphics2D graphics =
                 icon.createGraphics();
 
-        try
-        {
+        try {
             graphics.setColor(
                     new Color(30, 30, 30)
             );
@@ -236,9 +255,7 @@ public class WeCorpPlugin extends Plugin {
                     2,
                     13
             );
-        }
-        finally
-        {
+        } finally {
             graphics.dispose();
         }
 
@@ -253,6 +270,8 @@ public class WeCorpPlugin extends Plugin {
         clientToolbar.addNavigation(
                 navButton
         );
+
+        overlayManager.add(weCorpOverlay);
 
         /*
          * Always start WeCorpCC in Boosting mode when RuneLite starts.
@@ -270,44 +289,38 @@ public class WeCorpPlugin extends Plugin {
         lastSpecialEnergy =
                 client.getVarpValue(300);
     }
-    private void applyPluginMode()
-    {
+
+    private void applyPluginMode() {
         PluginMode mode =
                 config.pluginMode();
 
-        if (mode == null)
-        {
+        if (mode == null) {
             mode = PluginMode.BOOSTING;
         }
 
-        if (modePanel != null)
-        {
+        if (modePanel != null) {
             modePanel.showMode(mode);
         }
     }
 
     @Subscribe
     public void onConfigChanged(
-            ConfigChanged event)
-    {
+            ConfigChanged event) {
         if (event == null ||
                 !"wecorpcc".equals(
                         event.getGroup()
-                ))
-        {
+                )) {
             return;
         }
 
         if ("pluginMode".equals(
                 event.getKey()
-        ))
-        {
+        )) {
             applyPluginMode();
         }
     }
 
-    private void resetMassMode()
-    {
+    private void resetMassMode() {
         clearPendingMassBgs();
 
         /*
@@ -345,8 +358,7 @@ public class WeCorpPlugin extends Plugin {
         corpAlive = false;
         corpKillProcessed = false;
 
-        if (massPanel != null)
-        {
+        if (massPanel != null) {
             massPanel.resetPanel();
             massPanel.setTotalKills(0);
         }
@@ -360,6 +372,7 @@ public class WeCorpPlugin extends Plugin {
             clientToolbar.removeNavigation(navButton);
         }
 
+        overlayManager.remove(weCorpOverlay);
         clearData();
         lastSpecialEnergy = -1;
         customers.clear();
@@ -401,28 +414,24 @@ public class WeCorpPlugin extends Plugin {
         if (pendingSoloDwh ||
                 pendingSoloBgs ||
                 pendingSoloArclight ||
-                pendingSoloMaul)
-        {
+                pendingSoloMaul) {
             int elapsedCycles =
                     client.getGameCycle() -
                             pendingSoloSpecGameCycle;
 
             if (elapsedCycles < 0 ||
-                    elapsedCycles > 120)
-            {
+                    elapsedCycles > 120) {
                 clearPendingSoloSpec();
             }
         }
 
-        if (pendingMassBgs)
-        {
+        if (pendingMassBgs) {
             int elapsedCycles =
                     client.getGameCycle() -
                             pendingMassBgsGameCycle;
 
             if (elapsedCycles < 0 ||
-                    elapsedCycles > 120)
-            {
+                    elapsedCycles > 120) {
                 clearPendingMassBgs();
             }
         }
@@ -639,11 +648,9 @@ public class WeCorpPlugin extends Plugin {
     }
 
     @Subscribe
-    public void onAnimationChanged(AnimationChanged event)
-    {
+    public void onAnimationChanged(AnimationChanged event) {
         if (!atCorp ||
-                !(event.getActor() instanceof Player))
-        {
+                !(event.getActor() instanceof Player)) {
             return;
         }
 
@@ -653,16 +660,13 @@ public class WeCorpPlugin extends Plugin {
         String name =
                 player.getName();
 
-        if (name == null)
-        {
+        if (name == null) {
             return;
         }
 
         int animation =
                 player.getAnimation();
-
-        if (animation == FANG_SPEC_ANIM)
-        {
+        if (animation == FANG_SPEC_ANIM) {
             fangCount.put(
                     name,
                     fangCount.getOrDefault(name, 0) + 1
@@ -674,13 +678,10 @@ public class WeCorpPlugin extends Plugin {
             );
 
             if (config.pluginMode() == PluginMode.MASS &&
-                    massPanel != null)
-            {
+                    massPanel != null) {
                 massPanel.addFangSpec();
             }
-        }
-        else if (animation == DWH_ANIM)
-        {
+        } else if (animation == DWH_ANIM) {
             /*
              * Existing Boosting tracking.
              */
@@ -697,8 +698,7 @@ public class WeCorpPlugin extends Plugin {
              * Optional Mass DWH counter.
              */
             if (config.pluginMode() == PluginMode.MASS &&
-                    massPanel != null)
-            {
+                    massPanel != null) {
                 massPanel.addDwhSpec();
             }
 
@@ -708,8 +708,7 @@ public class WeCorpPlugin extends Plugin {
              */
             if (config.pluginMode() == PluginMode.SOLO &&
                     soloPanel != null &&
-                    player == client.getLocalPlayer())
-            {
+                    player == client.getLocalPlayer()) {
                 pendingSoloDwh = true;
                 pendingSoloBgs = false;
                 pendingSoloArclight = false;
@@ -717,11 +716,22 @@ public class WeCorpPlugin extends Plugin {
                 pendingSoloSpecGameCycle =
                         client.getGameCycle();
             }
-        }
-        else if (animation == ELDER_MAUL_SPEC_ANIM &&
+            /*
+             * Overlay:
+             * Wait for the local player's real Corp hitsplat.
+             * A 0 does NOT count as landed.
+             */
+            if (config.pluginMode() == PluginMode.BOOSTING &&
+                    player == client.getLocalPlayer()) {
+                pendingOverlayDwh = true;
+                pendingOverlayMaul = false;
+
+                pendingOverlaySpecGameCycle =
+                        client.getGameCycle();
+            }
+        } else if (animation == ELDER_MAUL_SPEC_ANIM &&
                 player.getInteracting() instanceof NPC &&
-                ((NPC) player.getInteracting()).getId() == CORP_ID)
-        {
+                ((NPC) player.getInteracting()).getId() == CORP_ID) {
             /*
              * Elder Maul special.
              *
@@ -729,8 +739,7 @@ public class WeCorpPlugin extends Plugin {
              * for both the local player and remote players.
              */
 
-            if (config.pluginMode() == PluginMode.BOOSTING)
-            {
+            if (config.pluginMode() == PluginMode.BOOSTING) {
                 maulCount.put(
                         name,
                         maulCount.getOrDefault(name, 0) + 1
@@ -743,8 +752,7 @@ public class WeCorpPlugin extends Plugin {
              */
             if (config.pluginMode() == PluginMode.SOLO &&
                     soloPanel != null &&
-                    player == client.getLocalPlayer())
-            {
+                    player == client.getLocalPlayer()) {
                 pendingSoloMaul = true;
                 pendingSoloDwh = false;
                 pendingSoloBgs = false;
@@ -753,10 +761,20 @@ public class WeCorpPlugin extends Plugin {
                 pendingSoloSpecGameCycle =
                         client.getGameCycle();
             }
-        }
-        else if (animation == BGS_ANIM ||
-                animation == BGS_ANIM_2)
-        {
+            /*
+             * Overlay:
+             * Wait for the local player's real Corp hitsplat.
+             */
+            if (config.pluginMode() == PluginMode.BOOSTING &&
+                    player == client.getLocalPlayer()) {
+                pendingOverlayMaul = true;
+                pendingOverlayDwh = false;
+
+                pendingOverlaySpecGameCycle =
+                        client.getGameCycle();
+            }
+        } else if (animation == BGS_ANIM ||
+                animation == BGS_ANIM_2) {
             /*
              * Existing Boosting tracking.
              */
@@ -771,8 +789,7 @@ public class WeCorpPlugin extends Plugin {
              */
             if (config.pluginMode() == PluginMode.MASS &&
                     massPanel != null &&
-                    player == client.getLocalPlayer())
-            {
+                    player == client.getLocalPlayer()) {
                 pendingMassBgs = true;
                 pendingMassBgsGameCycle =
                         client.getGameCycle();
@@ -783,8 +800,7 @@ public class WeCorpPlugin extends Plugin {
              */
             if (config.pluginMode() == PluginMode.SOLO &&
                     soloPanel != null &&
-                    player == client.getLocalPlayer())
-            {
+                    player == client.getLocalPlayer()) {
                 pendingSoloBgs = true;
                 pendingSoloDwh = false;
                 pendingSoloArclight = false;
@@ -792,9 +808,7 @@ public class WeCorpPlugin extends Plugin {
                 pendingSoloSpecGameCycle =
                         client.getGameCycle();
             }
-        }
-        else if (animation == VOIDWAKER_ANIM)
-        {
+        } else if (animation == VOIDWAKER_ANIM) {
             /*
              * Existing Boosting tracking.
              */
@@ -812,23 +826,21 @@ public class WeCorpPlugin extends Plugin {
              * Mass current-kill and trip Voidwaker counter.
              */
             if (config.pluginMode() == PluginMode.MASS &&
-                    massPanel != null)
-            {
+                    massPanel != null) {
                 massPanel.addVoidwakerSpec();
             }
         }
 
         updatePlayerList();
     }
-    private boolean isElderMaulEquipped()
-    {
+
+    private boolean isElderMaulEquipped() {
         net.runelite.api.ItemContainer equipment =
                 client.getItemContainer(
                         net.runelite.api.InventoryID.EQUIPMENT
                 );
 
-        if (equipment == null)
-        {
+        if (equipment == null) {
             return false;
         }
 
@@ -838,8 +850,7 @@ public class WeCorpPlugin extends Plugin {
                                 .getSlotIdx()
                 );
 
-        if (weapon == null)
-        {
+        if (weapon == null) {
             return false;
         }
 
@@ -854,15 +865,13 @@ public class WeCorpPlugin extends Plugin {
                 weaponId == 27100;
     }
 
-    private boolean isArclightEquipped()
-    {
+    private boolean isArclightEquipped() {
         net.runelite.api.ItemContainer equipment =
                 client.getItemContainer(
                         net.runelite.api.InventoryID.EQUIPMENT
                 );
 
-        if (equipment == null)
-        {
+        if (equipment == null) {
             return false;
         }
 
@@ -872,8 +881,7 @@ public class WeCorpPlugin extends Plugin {
                                 .getSlotIdx()
                 );
 
-        if (weapon == null)
-        {
+        if (weapon == null) {
             return false;
         }
 
@@ -882,33 +890,66 @@ public class WeCorpPlugin extends Plugin {
         return weaponId == ARCLIGHT_ID ||
                 weaponId == net.runelite.api.gameval.ItemID.EMBERLIGHT;
     }
-    @Subscribe
-    public void onHitsplatApplied(HitsplatApplied event)
+    public boolean isCustomer(String playerName)
     {
+        return customers.contains(
+                normalizeName(playerName)
+        );
+    }
+    @Subscribe
+    public void onHitsplatApplied(HitsplatApplied event) {
         if (!(event.getActor() instanceof NPC) ||
-                event.getHitsplat() == null)
-        {
+                event.getHitsplat() == null) {
             return;
         }
 
         NPC npc = (NPC) event.getActor();
 
         if (npc.getId() != CORP_ID ||
-                !event.getHitsplat().isMine())
-        {
+                !event.getHitsplat().isMine()) {
             return;
         }
 
         int damage =
                 event.getHitsplat().getAmount();
+        /*
+         * Boosting overlay confirmed DWH / Elder Maul.
+         *
+         * HitsplatApplied is already restricted above to:
+         * - Corp
+         * - local player's hit
+         *
+         * A zero does NOT count.
+         */
+        if (config.pluginMode() == PluginMode.BOOSTING &&
+                (pendingOverlayDwh || pendingOverlayMaul)) {
+            int elapsedCycles =
+                    client.getGameCycle() -
+                            pendingOverlaySpecGameCycle;
 
+            if (elapsedCycles >= 0 &&
+                    elapsedCycles <= 120) {
+                if (pendingOverlayDwh) {
+                    if (damage > 0) {
+                        overlayDwhLanded++;
+                    }
+                } else if (pendingOverlayMaul) {
+                    if (damage > 0) {
+                        overlayMaulLanded++;
+                    }
+                }
+            }
+
+            pendingOverlayDwh = false;
+            pendingOverlayMaul = false;
+            pendingOverlaySpecGameCycle = 0;
+        }
         /*
          * Mass Mode: count the local player's real BGS damage only.
          */
         if (config.pluginMode() == PluginMode.MASS &&
                 massPanel != null &&
-                pendingMassBgs)
-        {
+                pendingMassBgs) {
             int elapsedCycles =
                     client.getGameCycle() -
                             pendingMassBgsGameCycle;
@@ -917,8 +958,7 @@ public class WeCorpPlugin extends Plugin {
 
             if (elapsedCycles >= 0 &&
                     elapsedCycles <= 120 &&
-                    damage > 0)
-            {
+                    damage > 0) {
                 massPanel.addBgsDamage(damage);
             }
 
@@ -929,8 +969,7 @@ public class WeCorpPlugin extends Plugin {
          * Solo Mode logic remains unchanged.
          */
         if (config.pluginMode() != PluginMode.SOLO ||
-                soloPanel == null)
-        {
+                soloPanel == null) {
             return;
         }
 
@@ -939,59 +978,49 @@ public class WeCorpPlugin extends Plugin {
                         pendingSoloSpecGameCycle;
 
         if (elapsedCycles < 0 ||
-                elapsedCycles > 120)
-        {
+                elapsedCycles > 120) {
             clearPendingSoloSpec();
             return;
         }
 
-        if (pendingSoloDwh)
-        {
+        if (pendingSoloDwh) {
             clearPendingSoloSpec();
 
-            if (damage > 0)
-            {
+            if (damage > 0) {
                 soloPanel.addDwhSpec();
             }
 
             return;
         }
-        if (pendingSoloMaul)
-        {
+        if (pendingSoloMaul) {
             clearPendingSoloSpec();
 
-            if (damage > 0)
-            {
+            if (damage > 0) {
                 soloPanel.addDwhSpec();
             }
 
             return;
         }
-        if (pendingSoloBgs)
-        {
+        if (pendingSoloBgs) {
             clearPendingSoloSpec();
 
-            if (damage > 0)
-            {
+            if (damage > 0) {
                 soloPanel.addBgsDamage(damage);
             }
 
             return;
         }
 
-        if (pendingSoloArclight)
-        {
+        if (pendingSoloArclight) {
             clearPendingSoloSpec();
 
-            if (damage > 0)
-            {
+            if (damage > 0) {
                 soloPanel.addArclightHit();
             }
         }
     }
 
-    private void clearPendingSoloSpec()
-    {
+    private void clearPendingSoloSpec() {
         pendingSoloDwh = false;
         pendingSoloBgs = false;
         pendingSoloArclight = false;
@@ -999,25 +1028,21 @@ public class WeCorpPlugin extends Plugin {
         pendingSoloSpecGameCycle = 0;
     }
 
-    private void clearPendingMassBgs()
-    {
+    private void clearPendingMassBgs() {
         pendingMassBgs = false;
         pendingMassBgsGameCycle = 0;
     }
 
     @Subscribe
-    public void onChatMessage(ChatMessage event)
-    {
+    public void onChatMessage(ChatMessage event) {
         if (event.getType() != ChatMessageType.GAMEMESSAGE &&
-                event.getType() != ChatMessageType.SPAM)
-        {
+                event.getType() != ChatMessageType.SPAM) {
             return;
         }
 
         String message = event.getMessage();
 
-        if (message == null)
-        {
+        if (message == null) {
             return;
         }
 
@@ -1032,8 +1057,7 @@ public class WeCorpPlugin extends Plugin {
          * Only process Corporeal Beast drop messages.
          */
         if (!lowerMessage.contains("received a drop") ||
-                !lowerMessage.contains("corporeal beast"))
-        {
+                !lowerMessage.contains("corporeal beast")) {
             return;
         }
 
@@ -1041,8 +1065,7 @@ public class WeCorpPlugin extends Plugin {
          * Prevent processing the same Corp drop message twice.
          */
         if (cleanMessage.equals(lastDropMessage) &&
-                System.currentTimeMillis() - lastDropTime < 3000)
-        {
+                System.currentTimeMillis() - lastDropTime < 3000) {
             return;
         }
 
@@ -1052,8 +1075,7 @@ public class WeCorpPlugin extends Plugin {
         int index =
                 lowerMessage.indexOf(" received a drop");
 
-        if (index <= 0)
-        {
+        if (index <= 0) {
             return;
         }
 
@@ -1069,8 +1091,7 @@ public class WeCorpPlugin extends Plugin {
          * Corp can print several different loot lines for one death.
          * Award KC/package KC/total kills only once for this Corp spawn.
          */
-        if (!corpKillProcessed)
-        {
+        if (!corpKillProcessed) {
             corpKillProcessed = true;
 
             lastKillAttendees.clear();
@@ -1083,11 +1104,9 @@ public class WeCorpPlugin extends Plugin {
             boolean found = false;
 
             for (String existingName :
-                    new HashSet<>(killCount.keySet()))
-            {
+                    new HashSet<>(killCount.keySet())) {
                 if (normalizeName(existingName)
-                        .equals(normalizedReceiverName))
-                {
+                        .equals(normalizedReceiverName)) {
                     killCount.put(
                             existingName,
                             killCount.getOrDefault(
@@ -1101,8 +1120,7 @@ public class WeCorpPlugin extends Plugin {
                 }
             }
 
-            if (!found)
-            {
+            if (!found) {
                 String cleanReceiverName =
                         removeYouSuffix(receiverName);
 
@@ -1122,44 +1140,35 @@ public class WeCorpPlugin extends Plugin {
         /*
          * Mass Mode total KC and valuable-drop tracking.
          */
-        if (massPanel != null)
-        {
-            if (corpKillProcessed)
-            {
+        if (massPanel != null) {
+            if (corpKillProcessed) {
                 massPanel.setTotalKills(
                         totalKills
                 );
             }
 
-            if (lowerMessage.contains("elysian sigil"))
-            {
+            if (lowerMessage.contains("elysian sigil")) {
                 massPanel.addElysianSigil(
                         receiverName,
                         new HashSet<>(
                                 lastKillAttendees
                         )
                 );
-            }
-            else if (lowerMessage.contains("spectral sigil"))
-            {
+            } else if (lowerMessage.contains("spectral sigil")) {
                 massPanel.addSpectralSigil(
                         receiverName,
                         new HashSet<>(
                                 lastKillAttendees
                         )
                 );
-            }
-            else if (lowerMessage.contains("arcane sigil"))
-            {
+            } else if (lowerMessage.contains("arcane sigil")) {
                 massPanel.addArcaneSigil(
                         receiverName,
                         new HashSet<>(
                                 lastKillAttendees
                         )
                 );
-            }
-            else if (lowerMessage.contains("onyx"))
-            {
+            } else if (lowerMessage.contains("onyx")) {
                 massPanel.addOnyx();
             }
 
@@ -1170,8 +1179,7 @@ public class WeCorpPlugin extends Plugin {
             massPanel.resetCurrentKillSpecs();
         }
 
-        if (corpAlive)
-        {
+        if (corpAlive) {
             /*
              * Corp has died.
              *
@@ -1185,9 +1193,13 @@ public class WeCorpPlugin extends Plugin {
 
             clearPendingSoloSpec();
             clearPendingMassBgs();
+            pendingOverlayDwh = false;
+            pendingOverlayMaul = false;
+            pendingOverlaySpecGameCycle = 0;
 
-            if (soloPanel != null)
-            {
+            overlayDwhLanded = 0;
+            overlayMaulLanded = 0;
+            if (soloPanel != null) {
                 soloPanel.resetProgress();
             }
 
@@ -1201,8 +1213,8 @@ public class WeCorpPlugin extends Plugin {
 
         updatePlayerList();
     }
-    private void updatePlayerList()
-    {
+
+    private void updatePlayerList() {
         Map<String, String> playerInfo =
                 new LinkedHashMap<>();
 
@@ -1211,8 +1223,7 @@ public class WeCorpPlugin extends Plugin {
 
         lowHpPlayers.clear();
 
-        if (atCorp)
-        {
+        if (atCorp) {
             long now =
                     System.currentTimeMillis();
 
@@ -1220,8 +1231,7 @@ public class WeCorpPlugin extends Plugin {
                     client.getLocalPlayer();
 
             if (localPlayer != null &&
-                    localPlayer.getName() != null)
-            {
+                    localPlayer.getName() != null) {
                 String name =
                         localPlayer.getName();
 
@@ -1237,8 +1247,7 @@ public class WeCorpPlugin extends Plugin {
                  * Boosting panel:
                  * Keep the existing hidden-player behavior.
                  */
-                if (!hiddenPlayers.contains(normalizedName))
-                {
+                if (!hiddenPlayers.contains(normalizedName)) {
                     playerInfo.put(
                             name + " (You)",
                             getSpecText(name)
@@ -1267,12 +1276,10 @@ public class WeCorpPlugin extends Plugin {
             }
 
             for (Player player :
-                    client.getPlayers())
-            {
+                    client.getPlayers()) {
                 if (player == null ||
                         player.getName() == null ||
-                        player == localPlayer)
-                {
+                        player == localPlayer) {
                     continue;
                 }
 
@@ -1287,8 +1294,7 @@ public class WeCorpPlugin extends Plugin {
                         now
                 );
 
-                if (!hiddenPlayers.contains(normalizedName))
-                {
+                if (!hiddenPlayers.contains(normalizedName)) {
                     playerInfo.put(
                             name,
                             getSpecText(name)
@@ -1327,8 +1333,7 @@ public class WeCorpPlugin extends Plugin {
         /*
          * Update Mass Mode separately.
          */
-        if (massPanel != null)
-        {
+        if (massPanel != null) {
             massPanel.setMassActive(atCorp);
             massPanel.updatePlayers(
                     massPlayerInfo
@@ -1336,14 +1341,11 @@ public class WeCorpPlugin extends Plugin {
         }
     }
 
-    private int getKillCountForName(String name)
-    {
+    private int getKillCountForName(String name) {
         String normalizedName = normalizeName(name);
 
-        for (Map.Entry<String, Integer> entry : killCount.entrySet())
-        {
-            if (normalizeName(entry.getKey()).equals(normalizedName))
-            {
+        for (Map.Entry<String, Integer> entry : killCount.entrySet()) {
+            if (normalizeName(entry.getKey()).equals(normalizedName)) {
                 return entry.getValue();
             }
         }
@@ -1351,35 +1353,29 @@ public class WeCorpPlugin extends Plugin {
         return 0;
     }
 
-    private String getSpecText(String name)
-    {
+    private String getSpecText(String name) {
         List<String> parts = new ArrayList<>();
 
-        if (config.showSpecs())
-        {
+        if (config.showSpecs()) {
             int dwh = dwhCount.getOrDefault(name, 0);
             int bgs = bgsCount.getOrDefault(name, 0);
             int maul = maulCount.getOrDefault(name, 0);
             int voidwaker =
                     voidwakerCount.getOrDefault(name, 0);
 
-            if (dwh > 0)
-            {
+            if (dwh > 0) {
                 parts.add("DWH:" + dwh);
             }
 
-            if (bgs > 0)
-            {
+            if (bgs > 0) {
                 parts.add("BGS:" + bgs);
             }
 
-            if (maul > 0)
-            {
+            if (maul > 0) {
                 parts.add("Maul:" + maul);
             }
 
-            if (voidwaker > 0)
-            {
+            if (voidwaker > 0) {
                 parts.add("VW:" + voidwaker);
             }
         }
@@ -1388,11 +1384,11 @@ public class WeCorpPlugin extends Plugin {
                 ? ""
                 : String.join(" ", parts);
     }
+
     private void updateStatusPanel(
             int playerCount,
             String kphValue,
-            long killSeconds)
-    {
+            long killSeconds) {
         long tripSeconds = tripStartTime > 0
                 ? (System.currentTimeMillis() - tripStartTime) / 1000
                 : 0;
@@ -1414,26 +1410,22 @@ public class WeCorpPlugin extends Plugin {
         );
     }
 
-    private void clearData()
-    {
+    private void clearData() {
         dwhCount.clear();
         bgsCount.clear();
         maulCount.clear();
         voidwakerCount.clear();
 
-        if (panel != null)
-        {
+        if (panel != null) {
             panel.clearDisplayedSpecs();
         }
     }
 
-    private void fullReset()
-    {
+    private void fullReset() {
         clearPendingSoloSpec();
         clearPendingMassBgs();
         firstKillTime = 0;
-        if (totalKills > 0 || tripStartTime > 0)
-        {
+        if (totalKills > 0 || tripStartTime > 0) {
             long tripSeconds = tripStartTime > 0
                     ? (System.currentTimeMillis() - tripStartTime) / 1000
                     : 0;
@@ -1501,8 +1493,7 @@ public class WeCorpPlugin extends Plugin {
 
     }
 
-    private void updateWaitingStatus()
-    {
+    private void updateWaitingStatus() {
         panel.setStatus(
                 "<html><center>" +
                         "<b>Waiting for Corp...</b><br>" +
@@ -1515,12 +1506,10 @@ public class WeCorpPlugin extends Plugin {
         );
     }
 
-    private void checkLowHp(Player player, String name)
-    {
+    private void checkLowHp(Player player, String name) {
         String normalizedName = normalizeName(name);
 
-        if (!config.lowHpWarning())
-        {
+        if (!config.lowHpWarning()) {
             lowHpPlayers.remove(normalizedName);
             lowHpWarned.remove(normalizedName);
             return;
@@ -1533,21 +1522,17 @@ public class WeCorpPlugin extends Plugin {
                         ? ""
                         : configuredNames.trim();
 
-        if (!watchList.isEmpty())
-        {
+        if (!watchList.isEmpty()) {
             boolean inList = false;
 
-            for (String watchedName : watchList.split(","))
-            {
-                if (watchedName.trim().equalsIgnoreCase(name))
-                {
+            for (String watchedName : watchList.split(",")) {
+                if (watchedName.trim().equalsIgnoreCase(name)) {
                     inList = true;
                     break;
                 }
             }
 
-            if (!inList)
-            {
+            if (!inList) {
                 lowHpPlayers.remove(normalizedName);
                 lowHpWarned.remove(normalizedName);
                 return;
@@ -1557,20 +1542,17 @@ public class WeCorpPlugin extends Plugin {
         int healthRatio = player.getHealthRatio();
         int healthScale = player.getHealthScale();
 
-        if (healthScale <= 0 || healthRatio < 0)
-        {
+        if (healthScale <= 0 || healthRatio < 0) {
             return;
         }
 
         double percentage =
                 (double) healthRatio / healthScale * 100.0;
 
-        if (percentage <= 40.0)
-        {
+        if (percentage <= 40.0) {
             lowHpPlayers.add(normalizedName);
 
-            if (!lowHpWarned.contains(normalizedName))
-            {
+            if (!lowHpWarned.contains(normalizedName)) {
                 client.addChatMessage(
                         ChatMessageType.GAMEMESSAGE,
                         "",
@@ -1580,26 +1562,22 @@ public class WeCorpPlugin extends Plugin {
 
                 lowHpWarned.add(normalizedName);
             }
-        }
-        else
-        {
+        } else {
             lowHpPlayers.remove(normalizedName);
             lowHpWarned.remove(normalizedName);
         }
     }
+
     @Subscribe
-    public void onVarbitChanged(VarbitChanged event)
-    {
-        if (event.getVarpId() != 300)
-        {
+    public void onVarbitChanged(VarbitChanged event) {
+        if (event.getVarpId() != 300) {
             return;
         }
 
         int currentSpecialEnergy =
                 client.getVarpValue(300);
 
-        if (lastSpecialEnergy < 0)
-        {
+        if (lastSpecialEnergy < 0) {
             lastSpecialEnergy = currentSpecialEnergy;
             return;
         }
@@ -1609,13 +1587,11 @@ public class WeCorpPlugin extends Plugin {
 
         lastSpecialEnergy = currentSpecialEnergy;
 
-        if (!specialEnergyDropped)
-        {
+        if (!specialEnergyDropped) {
             return;
         }
 
-        if (!atCorp)
-        {
+        if (!atCorp) {
             return;
         }
 
@@ -1628,8 +1604,7 @@ public class WeCorpPlugin extends Plugin {
          */
         if (config.pluginMode() != PluginMode.SOLO ||
                 soloPanel == null ||
-                !isArclightEquipped())
-        {
+                !isArclightEquipped()) {
             return;
         }
 
@@ -1640,6 +1615,35 @@ public class WeCorpPlugin extends Plugin {
 
         pendingSoloSpecGameCycle =
                 client.getGameCycle();
+    }
+
+    int getOverlayDwhCount()
+    {
+        int total = 0;
+
+        for (int count : dwhCount.values())
+        {
+            total += count;
+        }
+
+        return total;
+    }
+    boolean isOverlayCustomer(String playerName)
+    {
+        return panel != null &&
+                panel.isCustomer(playerName);
+    }
+
+    int getOverlayMaulCount()
+    {
+        int total = 0;
+
+        for (int count : maulCount.values())
+        {
+            total += count;
+        }
+
+        return total;
     }
 
     @Provides

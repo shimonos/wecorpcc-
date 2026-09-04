@@ -14,12 +14,14 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.plugins.specialcounter.SpecialCounterUpdate;
 
 public class ModePanel extends PluginPanel
 {
     private static final String BOOSTING_CARD = "BOOSTING";
     private static final String SOLO_CARD = "SOLO";
     private static final String MASS_CARD = "MASS";
+    private static final String LOBBY_CARD = "LOBBY";
 
     private static final Color ACTIVE_COLOR =
             new Color(50, 205, 50);
@@ -38,6 +40,9 @@ public class ModePanel extends PluginPanel
 
     private final Consumer<PluginMode> modeChangedCallback;
 
+    private JButton lobbyButton;
+    private boolean lobbyActive = false;
+
     private PluginMode currentMode =
             PluginMode.BOOSTING;
 
@@ -45,6 +50,7 @@ public class ModePanel extends PluginPanel
             WeCorpPanel boostingPanel,
             MassPanel massPanel,
             SoloPanel soloPanel,
+            CorpMassLobbyPanel lobbyPanel,
             Consumer<PluginMode> modeChangedCallback)
     {
         this.modeChangedCallback =
@@ -65,6 +71,7 @@ public class ModePanel extends PluginPanel
                 BOOSTING_CARD
         );
 
+
         cardPanel.add(
                 soloPanel,
                 SOLO_CARD
@@ -73,6 +80,10 @@ public class ModePanel extends PluginPanel
         cardPanel.add(
                 massPanel,
                 MASS_CARD
+        );
+        cardPanel.add(
+                lobbyPanel,
+                LOBBY_CARD
         );
 
         add(selectorPanel, BorderLayout.NORTH);
@@ -127,6 +138,44 @@ public class ModePanel extends PluginPanel
                 )
         );
 
+        lobbyButton = new JButton("Lobby");
+
+        lobbyButton.setFocusable(false);
+
+        lobbyButton.setFont(
+                lobbyButton.getFont().deriveFont(
+                        Font.BOLD,
+                        10f
+                )
+        );
+
+        lobbyButton.setBorder(
+                BorderFactory.createEmptyBorder(
+                        5,
+                        7,
+                        5,
+                        7
+                )
+        );
+
+        lobbyButton.addActionListener(event ->
+        {
+            lobbyActive = true;
+
+            cardLayout.show(
+                    cardPanel,
+                    LOBBY_CARD
+            );
+
+            refreshModeButtons();
+
+            revalidate();
+            repaint();
+        });
+
+        selectorPanel.add(
+                lobbyButton
+        );
         return selectorPanel;
     }
 
@@ -182,6 +231,7 @@ public class ModePanel extends PluginPanel
                             : mode;
 
             currentMode = safeMode;
+            lobbyActive = false;
 
             switch (safeMode)
             {
@@ -221,8 +271,8 @@ public class ModePanel extends PluginPanel
                 modeButtons.entrySet())
         {
             boolean active =
-                    entry.getKey() == currentMode;
-
+                    !lobbyActive &&
+                            entry.getKey() == currentMode;
             JButton button =
                     entry.getValue();
 
@@ -263,5 +313,22 @@ public class ModePanel extends PluginPanel
                             : ColorScheme.DARKER_GRAY_COLOR
             );
         }
+        lobbyButton.setText(
+                lobbyActive
+                        ? "● Lobby"
+                        : "○ Lobby"
+        );
+
+        lobbyButton.setForeground(
+                lobbyActive
+                        ? ACTIVE_COLOR
+                        : INACTIVE_COLOR
+        );
+
+        lobbyButton.setBackground(
+                lobbyActive
+                        ? ColorScheme.MEDIUM_GRAY_COLOR
+                        : ColorScheme.DARKER_GRAY_COLOR
+        );
     }
 }
