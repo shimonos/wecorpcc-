@@ -38,6 +38,7 @@ import javax.swing.SwingConstants;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 
+@lombok.extern.slf4j.Slf4j
 public class CorpMassLobbyPanel extends PluginPanel {
     private final JPanel massListPanel =
             new JPanel();
@@ -551,7 +552,7 @@ public class CorpMassLobbyPanel extends PluginPanel {
                             public void onFailure(
                                     okhttp3.Call call,
                                     java.io.IOException e) {
-                                System.out.println(
+                                log.info(
                                         "WECORP MASS LOBBY | heartbeat failed: " +
                                                 e.getMessage()
                                 );
@@ -568,7 +569,7 @@ public class CorpMassLobbyPanel extends PluginPanel {
                                         clearLocalAdvertisement();
                                         fetchSharedMasses();
                                     } else if (!res.isSuccessful()) {
-                                        System.out.println(
+                                        log.info(
                                                 "WECORP MASS LOBBY | heartbeat returned " +
                                                         res.code()
                                         );
@@ -738,7 +739,7 @@ public class CorpMassLobbyPanel extends PluginPanel {
                         }
                     }
 
-                    System.out.println(
+                    log.info(
                             "WECORP MASS LOBBY | world not found: " +
                                     world
                     );
@@ -797,14 +798,14 @@ public class CorpMassLobbyPanel extends PluginPanel {
         httpClient.newCall(request).enqueue(new okhttp3.Callback() {
             @Override
             public void onFailure(okhttp3.Call call, java.io.IOException e) {
-                System.out.println("WECORP MASS LOBBY | fetch failed: " + e.getMessage());
+                log.info("WECORP MASS LOBBY | fetch failed: " + e.getMessage());
             }
 
             @Override
             public void onResponse(okhttp3.Call call, Response response) throws java.io.IOException {
                 try (Response res = response) {
                     if (!res.isSuccessful()) {
-                        System.out.println("WECORP MASS LOBBY | server returned " + res.code());
+                        log.info("WECORP MASS LOBBY | server returned " + res.code());
                         return;
                     }
 
@@ -879,3 +880,4 @@ public class CorpMassLobbyPanel extends PluginPanel {
         private String error;
     }
 }
+
