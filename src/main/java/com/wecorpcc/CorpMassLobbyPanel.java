@@ -46,8 +46,8 @@ public class CorpMassLobbyPanel extends PluginPanel {
     private final ClientThread clientThread;
     private static final String LOBBY_API = "https://wecorpcc.onrender.com";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private final OkHttpClient httpClient = new OkHttpClient();
-    private final Gson gson = new Gson();
+    private final OkHttpClient httpClient;
+    private final Gson gson;
 
     private int advertisedMemberCount = 0;
 
@@ -65,11 +65,16 @@ public class CorpMassLobbyPanel extends PluginPanel {
 
     public CorpMassLobbyPanel(
             Client client,
-            ClientThread clientThread) {
+            ClientThread clientThread,
+            OkHttpClient httpClient,
+            Gson gson)
+    {
         super();
 
         this.client = client;
         this.clientThread = clientThread;
+        this.httpClient = httpClient;
+        this.gson = gson;
         lobbyRefreshTimer = new Timer(
                 5000,
                 event ->

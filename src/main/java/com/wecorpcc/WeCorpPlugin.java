@@ -123,6 +123,12 @@ public class WeCorpPlugin extends Plugin {
     private ClientThread clientThread;
 
     @Inject
+    private okhttp3.OkHttpClient httpClient;
+
+    @Inject
+    private com.google.gson.Gson gson;
+
+    @Inject
     private WeCorpConfig config;
 
     @Inject
@@ -156,7 +162,9 @@ public class WeCorpPlugin extends Plugin {
 
         corpMassLobbyPanel = new CorpMassLobbyPanel(
                 client,
-                clientThread
+                clientThread,
+                httpClient,
+                gson
         );
 
         soloPanel.setReadyCallback(() ->
